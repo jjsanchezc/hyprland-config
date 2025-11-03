@@ -60,7 +60,7 @@
 
     "cpu": {
         "interval": 10,
-        "format": "󰻠 {usage}%",
+        "format": "{usage}%",
         "max-length": 10,
         "tooltip": false
     },
