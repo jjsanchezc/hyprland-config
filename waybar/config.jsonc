@@ -150,6 +150,6 @@
         "format": "⏻",
         "tooltip": true,
         "tooltip-format": "Power menu",
-        "on-click": "$HOME/.local/bin/power-menu"
+        "on-click": "wlogout"
     }
 }
