@@ -20,9 +20,16 @@ button {
     transition: background-color 0.3s ease;
 }
 
-button:focus, button:active, button:hover {
+button:hover {
     background-color: #404040;
+}
+
+button:focus {
     outline-style: none;
+}
+
+button:active {
+    background-color: #404040;
 }
 
 #lock {
