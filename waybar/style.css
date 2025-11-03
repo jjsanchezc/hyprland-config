@@ -49,6 +49,7 @@ tooltip {
 }
 
 #custom-power_profile,
+#custom-power,
 #window,
 #clock,
 #battery,
@@ -135,6 +136,15 @@ tooltip {
 
 #tray {
     border-radius: 10px;
+    margin-left: 5px;
+    margin-right: 5px;
+}
+
+/* Grupo 6: Power button */
+#custom-power {
+    color: #976061;
+    border-radius: 10px;
+    margin-left: 5px;
     margin-right: 10px;
 }
 

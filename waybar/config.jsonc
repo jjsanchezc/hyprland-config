@@ -7,8 +7,8 @@
     "gtk-layer-shell": true,
     "height": 50,
     "modules-left": ["hyprland/workspaces"],
-    "modules-center": ["clock"],
-    "modules-right": ["cpu", "memory", "custom/power_profile", "network", "bluetooth", "pulseaudio", "pulseaudio#microphone", "battery", "backlight", "tray", "custom/power"],
+    "modules-center": ["clock","custom/power"],
+    "modules-right": ["cpu", "memory", "custom/power_profile", "network", "bluetooth", "pulseaudio", "pulseaudio#microphone", "battery", "backlight", "tray"],
     "hyprland/window": {
         "format": "{}"
     },
@@ -147,9 +147,9 @@
     },
 
     "custom/power": {
-        "format": "",
+        "format": "⏻",
         "tooltip": true,
         "tooltip-format": "Power menu",
-        "on-click": "power-menu"
+        "on-click": "$HOME/.local/bin/power-menu"
     }
 }
