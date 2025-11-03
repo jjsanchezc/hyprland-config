@@ -10,7 +10,6 @@ configuration {
     show-icons: false;
     display-run:  "";
     display-drun:  "";
-    display-emoji: "";
     disable-history: true;
     kb-row-up:        "Up,Control+k";
     kb-row-down:      "Down,Control+j";
