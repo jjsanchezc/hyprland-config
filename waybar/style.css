@@ -71,7 +71,7 @@ tooltip {
 
 /* Grupo 1: CPU + Memory + Power Profile */
 #cpu {
-    color: #976061;
+    color: #729a72;
     border-radius: 10px 0px 0px 10px;
     margin-left: 10px;
     border-right: 0px;
@@ -91,14 +91,14 @@ tooltip {
 
 /* Grupo 2: Network + Bluetooth */
 #network {
-    color: #a4965f;
+    color: #729a72;
     border-radius: 10px 0px 0px 10px;
     margin-left: 5px;
     border-right: 0px;
 }
 
 #bluetooth {
-    color: #72949a;
+    color: #729a72;
     border-radius: 0px 10px 10px 0px;
     margin-right: 5px;
     border-left: 0px;
@@ -106,14 +106,14 @@ tooltip {
 
 /* Grupo 3: Audio + Micrófono */
 #pulseaudio {
-    color: #729a96;
+    color: #729a72;
     border-radius: 10px 0px 0px 10px;
     margin-left: 5px;
     border-right: 0px;
 }
 
 #pulseaudio.microphone {
-    color: #8c729a;
+    color: #729a72;
     border-radius: 0px 10px 10px 0px;
     margin-right: 5px;
     border-left: 0px;
@@ -175,7 +175,7 @@ tooltip {
 }
 
 #clock {
-    color: #a49a72;
+    color: #729a72;
     border-radius: 10px;
     margin-left: 10px;
     margin-right: 10px;
