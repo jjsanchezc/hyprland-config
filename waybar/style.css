@@ -68,6 +68,7 @@ tooltip {
     border: 1px solid #1c1c1c;
 }
 
+/* Grupo 1: CPU + Memory + Power Profile */
 #cpu {
     color: #976061;
     border-radius: 10px 0px 0px 10px;
@@ -81,10 +82,55 @@ tooltip {
     border-right: 0px;
 }
 
-#backlight {
+#custom-power_profile {
     border-radius: 0px 10px 10px 0px;
-    margin-right: 10px;
+    margin-right: 5px;
     border-left: 0px;
+}
+
+/* Grupo 2: Network + Bluetooth */
+#network {
+    color: #a4965f;
+    border-radius: 10px 0px 0px 10px;
+    margin-left: 5px;
+    border-right: 0px;
+}
+
+#bluetooth {
+    color: #72949a;
+    border-radius: 0px 10px 10px 0px;
+    margin-right: 5px;
+    border-left: 0px;
+}
+
+/* Grupo 3: Audio + Micrófono */
+#pulseaudio {
+    color: #729a96;
+    border-radius: 10px 0px 0px 10px;
+    margin-left: 5px;
+    border-right: 0px;
+}
+
+#pulseaudio.microphone {
+    color: #8c729a;
+    border-radius: 0px 10px 10px 0px;
+    margin-right: 5px;
+    border-left: 0px;
+}
+
+/* Grupo 4: Battery (sola) */
+#battery {
+    color: #729a72;
+    border-radius: 10px;
+    margin-left: 5px;
+    margin-right: 5px;
+}
+
+/* Grupo 5: Backlight (sola) */
+#backlight {
+    border-radius: 10px;
+    margin-left: 5px;
+    margin-right: 5px;
 }
 
 #tray {
@@ -98,11 +144,6 @@ tooltip {
     margin-left: 10px;
     padding-right: 0px;
     padding-left: 5px;
-}
-
-#custom-power_profile {
-    border-left: 0px;
-    border-right: 0px;
 }
 
 #custom-power_profile.quiet {
@@ -125,37 +166,7 @@ tooltip {
 
 #clock {
     color: #a49a72;
-    border-radius: 10px 0px 0px 10px;
+    border-radius: 10px;
     margin-left: 10px;
-    border-right: 0px;
-}
-
-#network {
-    color: #a4965f;
-    border-left: 0px;
-    border-right: 0px;
-}
-
-#bluetooth {
-    color: #72949a;
-    border-left: 0px;
-    border-right: 0px;
-}
-
-#pulseaudio {
-    color: #729a96;
-    border-left: 0px;
-    border-right: 0px;
-}
-
-#pulseaudio.microphone {
-    color: #8c729a;
-    border-left: 0px;
-    border-right: 0px;
-}
-
-#battery {
-    color: #729a72;
-    border-left: 0px;
-    border-right: 0px;
+    margin-right: 10px;
 }
