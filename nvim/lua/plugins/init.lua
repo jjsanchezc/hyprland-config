@@ -152,4 +152,10 @@ return {
       vim.g.mkdp_theme = 'dark'
     end,
   },
+
+  -- VimBeGood - Practice Vim motions
+  {
+    "ThePrimeagen/vim-be-good",
+    cmd = "VimBeGood",
+  },
 }
