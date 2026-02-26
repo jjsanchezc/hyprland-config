@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+# Wallpaper picker using rofi — calls wallpaper-set on selection
+
+WALLPAPER_DIR="$HOME/.config/hypr/Wallpapers"
+
+selected=$(ls "$WALLPAPER_DIR" | rofi -dmenu -p " Wallpaper" -i)
+
+[[ -z "$selected" ]] && exit 0
+
+wallpaper-set "$WALLPAPER_DIR/$selected"

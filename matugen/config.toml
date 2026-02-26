@@ -31,3 +31,8 @@ post_hook = "pkill mako; mako &"
 [templates.rofi]
 input_path = "~/.config/matugen/templates/rofi.rasi.in"
 output_path = "~/.config/rofi/config.rasi"
+
+[templates.gtk4]
+input_path = "~/.config/matugen/templates/gtk4-colors.css.in"
+output_path = "~/.config/gtk-4.0/colors.css"
+post_hook = "gsettings set org.gnome.desktop.interface color-scheme prefer-dark"
