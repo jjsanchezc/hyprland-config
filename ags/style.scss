@@ -1,0 +1,209 @@
+// Color palette
+$bg: #1c1c1c;
+$bg-alt: #252525;
+$bg-hover: #353535;
+$fg: #dfdfdf;
+$fg-dim: #808080;
+$accent: #729a72;
+$accent-bg: rgba(114, 154, 114, 0.25);
+$urgent: #976061;
+$border: #404040;
+$radius: 10px;
+$font: "JetBrainsMono Nerd Font";
+
+* {
+    font-family: $font;
+    font-size: 13px;
+}
+
+window {
+    background-color: transparent;
+}
+
+.control-center {
+    background-color: rgba(28, 28, 28, 0.95);
+    border-radius: 12px;
+    border: 1px solid $border;
+    padding: 12px;
+    min-width: 350px;
+}
+
+// Header
+.header {
+    padding: 8px 4px;
+    margin-bottom: 4px;
+
+    image {
+        color: $fg;
+        -gtk-icon-size: 16px;
+    }
+
+    label {
+        color: $fg;
+    }
+}
+
+.sys-button {
+    min-width: 32px;
+    min-height: 32px;
+    border-radius: 8px;
+    background-color: $bg-alt;
+    margin-left: 4px;
+    padding: 4px;
+
+    &:hover {
+        background-color: $bg-hover;
+    }
+
+    image {
+        color: $fg;
+        -gtk-icon-size: 16px;
+    }
+}
+
+// Sliders
+.sliders {
+    padding: 4px 0;
+}
+
+.slider-row {
+    padding: 2px 0;
+
+    button {
+        min-width: 32px;
+        min-height: 32px;
+        border-radius: 8px;
+        background-color: transparent;
+        padding: 4px;
+
+        image {
+            color: $accent;
+            -gtk-icon-size: 18px;
+        }
+    }
+
+    scale {
+        margin: 0 4px;
+
+        trough {
+            min-height: 8px;
+            border-radius: 4px;
+            background-color: $bg-hover;
+        }
+
+        highlight {
+            border-radius: 4px;
+            background-color: $accent;
+        }
+
+        slider {
+            min-width: 16px;
+            min-height: 16px;
+            border-radius: 50%;
+            background-color: $fg;
+            margin: -4px;
+        }
+    }
+}
+
+// Toggle buttons
+.toggles {
+    margin: 2px 0;
+}
+
+.toggle-btn {
+    border-radius: $radius;
+    background-color: $bg-alt;
+    padding: 10px 12px;
+    transition: 200ms;
+
+    &:hover {
+        background-color: $bg-hover;
+    }
+
+    &.active {
+        background-color: $accent-bg;
+
+        image {
+            color: $accent;
+        }
+
+        label {
+            color: $fg;
+        }
+    }
+
+    image {
+        color: $fg;
+        -gtk-icon-size: 18px;
+    }
+
+    label {
+        color: $fg-dim;
+    }
+}
+
+// Media player
+.player {
+    background-color: $bg-alt;
+    border-radius: $radius;
+    padding: 10px;
+    margin-top: 4px;
+
+    .cover {
+        border-radius: 8px;
+        background-size: cover;
+        background-position: center;
+    }
+
+    .title {
+        color: $fg;
+        font-weight: bold;
+        font-size: 14px;
+    }
+
+    .artist {
+        color: $fg-dim;
+        font-size: 12px;
+    }
+
+    .player-icon {
+        color: $accent;
+        -gtk-icon-size: 16px;
+    }
+
+    button {
+        min-width: 28px;
+        min-height: 28px;
+        border-radius: 50%;
+        background-color: transparent;
+        padding: 0;
+
+        &:hover {
+            background-color: $bg-hover;
+        }
+
+        image {
+            color: $fg;
+            -gtk-icon-size: 16px;
+        }
+    }
+
+    .play-pause {
+        min-width: 32px;
+        min-height: 32px;
+
+        image {
+            color: $accent;
+            -gtk-icon-size: 20px;
+        }
+    }
+}
+
+tooltip {
+    background-color: $bg;
+    border-radius: 8px;
+    border: 1px solid $border;
+    padding: 4px 8px;
+    color: $fg;
+}
