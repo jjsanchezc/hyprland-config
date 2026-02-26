@@ -32,6 +32,11 @@ post_hook = "pkill mako; mako &"
 input_path = "~/.config/matugen/templates/rofi.rasi.in"
 output_path = "~/.config/rofi/config.rasi"
 
+[templates.tmux]
+input_path = "~/.config/matugen/templates/tmux-colors.conf.in"
+output_path = "~/.config/tmux/colors.conf"
+post_hook = "tmux source-file ~/.config/tmux/tmux.conf 2>/dev/null || true"
+
 [templates.gtk4]
 input_path = "~/.config/matugen/templates/gtk4-colors.css.in"
 output_path = "~/.config/gtk-4.0/colors.css"
