@@ -1,5 +1,5 @@
 import app from "ags/gtk4/app"
-import { Astal, Gtk } from "ags/gtk4"
+import { Astal, Gtk, Gdk } from "ags/gtk4"
 import { createBinding, createState, For, With } from "ags"
 import { createPoll } from "ags/time"
 import { execAsync } from "ags/process"
@@ -47,12 +47,16 @@ const uptime = createPoll("", 60_000, () => {
     return "0h 00m"
 })
 
+// === Expandable toggle state ===
+const [wifiExpanded, setWifiExpanded] = createState(false)
+const [btExpanded, setBtExpanded] = createState(false)
+
 // ============================================================
 //  HEADER
 // ============================================================
 function Header() {
     return (
-        <box class="header" spacing={8}>
+        <box class="header" spacing={10}>
             <box orientation={Gtk.Orientation.VERTICAL} valign={Gtk.Align.CENTER} hexpand>
                 <box spacing={4} visible={createBinding(battery, "isPresent")}>
                     <image iconName={createBinding(battery, "iconName")} />
@@ -94,6 +98,9 @@ function VolumeSlider() {
                 value={createBinding(speaker, "volume")}
                 onChangeValue={({ value }) => speaker.set_volume(value)}
             />
+            <label class="slider-value"
+                label={createBinding(speaker, "volume")((v) => `${Math.round(v * 100)}%`)}
+                widthChars={4} xalign={1} />
         </box>
     )
 }
@@ -113,6 +120,9 @@ function MicSlider() {
                 value={createBinding(mic, "volume")}
                 onChangeValue={({ value }) => mic.set_volume(value)}
             />
+            <label class="slider-value"
+                label={createBinding(mic, "volume")((v) => `${Math.round(v * 100)}%`)}
+                widthChars={4} xalign={1} />
         </box>
     )
 }
@@ -138,18 +148,21 @@ function BrightnessSlider() {
                     setBrightnessVal(value)
                 }}
             />
+            <label class="slider-value"
+                label={brightnessVal()((v: number) => `${Math.round(v * 100)}%`)}
+                widthChars={4} xalign={1} />
         </box>
     )
 }
 
 // ============================================================
-//  WIFI TOGGLE
+//  WIFI TOGGLE (expandable)
 // ============================================================
 function WifiToggle() {
     const wifi = network.wifi
 
     return (
-        <button class="toggle-btn"
+        <box class="toggle-btn"
             $={(self) => {
                 const update = () => {
                     if (wifi?.enabled) self.add_css_class("active")
@@ -157,27 +170,38 @@ function WifiToggle() {
                 }
                 wifi?.connect("notify::enabled", update)
                 update()
-            }}
-            onClicked={() => {
-                if (wifi) {
-                    wifi.enabled = !wifi.enabled
-                    if (wifi.enabled) wifi.scan()
-                }
             }}>
-            <box spacing={8}>
-                <image iconName={wifi ? createBinding(wifi, "iconName") : "network-wireless-offline-symbolic"} />
-                <label label={wifi ? createBinding(wifi, "ssid")((s) => s || "Disconnected") : "No WiFi"} maxWidthChars={10} ellipsize={3} />
-            </box>
-        </button>
+            <button class="toggle-main" hexpand
+                onClicked={() => {
+                    if (wifi) {
+                        wifi.enabled = !wifi.enabled
+                        if (wifi.enabled) wifi.scan()
+                    }
+                }}>
+                <box spacing={8}>
+                    <image iconName={wifi ? createBinding(wifi, "iconName") : "network-wireless-offline-symbolic"} />
+                    <label label={wifi ? createBinding(wifi, "ssid")((s) => s || "Disconnected") : "No WiFi"}
+                        hexpand xalign={0} maxWidthChars={8} ellipsize={3} />
+                </box>
+            </button>
+            <button class="toggle-arrow"
+                onClicked={() => {
+                    setWifiExpanded(!wifiExpanded())
+                    setBtExpanded(false)
+                    if (!wifiExpanded() && wifi) wifi.scan()
+                }}>
+                <image iconName={wifiExpanded()((e: boolean) => e ? "pan-down-symbolic" : "pan-end-symbolic")} />
+            </button>
+        </box>
     )
 }
 
 // ============================================================
-//  BLUETOOTH TOGGLE
+//  BLUETOOTH TOGGLE (expandable)
 // ============================================================
 function BluetoothToggle() {
     return (
-        <button class="toggle-btn"
+        <box class="toggle-btn"
             $={(self) => {
                 const update = () => {
                     if (bt.is_powered) self.add_css_class("active")
@@ -185,21 +209,86 @@ function BluetoothToggle() {
                 }
                 bt.connect("notify::is-powered", update)
                 update()
-            }}
-            onClicked={() => bt.toggle()}>
-            <box spacing={8}>
-                <image iconName={createBinding(bt, "isPowered")((on) =>
-                    on ? "bluetooth-active-symbolic" : "bluetooth-disabled-symbolic"
-                )} />
-                <label label={createBinding(bt, "isPowered")((on) => {
-                    if (!on) return "Off"
-                    const connected = bt.get_devices().filter(d => d.connected)
-                    if (connected.length === 1) return connected[0].alias
-                    if (connected.length > 1) return `${connected.length} Connected`
-                    return "On"
-                })} maxWidthChars={10} ellipsize={3} />
-            </box>
-        </button>
+            }}>
+            <button class="toggle-main" hexpand
+                onClicked={() => bt.toggle()}>
+                <box spacing={8}>
+                    <image iconName={createBinding(bt, "isPowered")((on) =>
+                        on ? "bluetooth-active-symbolic" : "bluetooth-disabled-symbolic"
+                    )} />
+                    <label label={createBinding(bt, "isPowered")((on) => {
+                        if (!on) return "Off"
+                        const connected = bt.get_devices().filter(d => d.connected)
+                        if (connected.length === 1) return connected[0].alias
+                        if (connected.length > 1) return `${connected.length} Connected`
+                        return "On"
+                    })} hexpand xalign={0} maxWidthChars={8} ellipsize={3} />
+                </box>
+            </button>
+            <button class="toggle-arrow"
+                onClicked={() => {
+                    setBtExpanded(!btExpanded())
+                    setWifiExpanded(false)
+                }}>
+                <image iconName={btExpanded()((e: boolean) => e ? "pan-down-symbolic" : "pan-end-symbolic")} />
+            </button>
+        </box>
+    )
+}
+
+// ============================================================
+//  WIFI DETAILS (expandable panel)
+// ============================================================
+function WifiDetails() {
+    const wifi = network.wifi
+    if (!wifi) return <box />
+
+    const aps = createBinding(wifi, "accessPoints")
+
+    return (
+        <box class="details-panel" orientation={Gtk.Orientation.VERTICAL} spacing={4}>
+            <For each={aps}>
+                {(ap) => (
+                    <button class="detail-item"
+                        onClicked={() => ap.activate(null, null)}>
+                        <box spacing={8}>
+                            <image iconName={createBinding(ap, "iconName")} />
+                            <label label={createBinding(ap, "ssid")((s) => s || "Hidden")}
+                                hexpand xalign={0} maxWidthChars={20} ellipsize={3} />
+                        </box>
+                    </button>
+                )}
+            </For>
+        </box>
+    )
+}
+
+// ============================================================
+//  BLUETOOTH DETAILS (expandable panel)
+// ============================================================
+function BluetoothDetails() {
+    const devices = createBinding(bt, "devices")
+
+    return (
+        <box class="details-panel" orientation={Gtk.Orientation.VERTICAL} spacing={4}>
+            <For each={devices}>
+                {(dev) => (
+                    <button class="detail-item"
+                        onClicked={() => {
+                            if (dev.connected) dev.disconnect_device(null)
+                            else dev.connect_device(null)
+                        }}>
+                        <box spacing={8}>
+                            <image iconName={`${dev.icon}-symbolic`} />
+                            <label label={dev.alias} hexpand xalign={0}
+                                maxWidthChars={20} ellipsize={3} />
+                            <label class="detail-status"
+                                label={dev.connected ? "Connected" : "Paired"} />
+                        </box>
+                    </button>
+                )}
+            </For>
+        </box>
     )
 }
 
@@ -229,27 +318,28 @@ function MicMuteToggle() {
 }
 
 // ============================================================
-//  DND TOGGLE
+//  DND TOGGLE (uses notifd binding for persistent state)
 // ============================================================
 function DndToggle() {
-    const [dnd, setDnd] = createState(false)
-
     return (
         <button class="toggle-btn"
             $={(self) => {
-                if (dnd()) self.add_css_class("active")
-                else self.remove_css_class("active")
+                const update = () => {
+                    if (notifd.dont_disturb) self.add_css_class("active")
+                    else self.remove_css_class("active")
+                }
+                notifd.connect("notify::dont-disturb", update)
+                update()
             }}
             onClicked={() => {
-                setDnd(!dnd())
                 notifd.set_dont_disturb(!notifd.dont_disturb)
             }}>
             <box spacing={8}>
-                <image iconName={dnd()
-                    ? "notifications-disabled-symbolic"
-                    : "preferences-system-notifications-symbolic"
-                } />
-                <label label={dnd() ? "Silent" : "Noisy"} />
+                <image iconName={createBinding(notifd, "dontDisturb")((d) =>
+                    d ? "notifications-disabled-symbolic"
+                      : "preferences-system-notifications-symbolic"
+                )} />
+                <label label={createBinding(notifd, "dontDisturb")((d) => d ? "Silent" : "Noisy")} />
             </box>
         </button>
     )
@@ -266,12 +356,12 @@ function lengthStr(length: number) {
 
 function Player({ player }: { player: AstalMpris.Player }) {
     return (
-        <box class="player" spacing={10}>
+        <box class="player" spacing={12}>
             <box
                 class="cover"
                 css={createBinding(player, "coverArt")((path) => `
-                    min-width: 100px;
-                    min-height: 100px;
+                    min-width: 130px;
+                    min-height: 130px;
                     background-image: url('${path || ""}');
                     background-size: cover;
                     border-radius: 8px;
@@ -339,28 +429,65 @@ export default function ControlCenter() {
             application={app}
             anchor={TOP | RIGHT}
             layer={Astal.Layer.OVERLAY}
-            keymode={Astal.Keymode.ON_DEMAND}
-            margin_top={8}
-            margin_right={8}
+            keymode={Astal.Keymode.EXCLUSIVE}
+            margin_top={10}
+            margin_right={10}
+            $={(self) => {
+                self.connect("notify::is-active", () => {
+                    if (!self.is_active) self.visible = false
+                })
+                const key = new Gtk.EventControllerKey()
+                key.connect("key-pressed", (_: any, keyval: number) => {
+                    if (keyval === Gdk.KEY_Escape) {
+                        self.visible = false
+                        return true
+                    }
+                    return false
+                })
+                self.add_controller(key)
+            }}
         >
-            <box class="control-center" orientation={Gtk.Orientation.VERTICAL} spacing={8}>
+            <box class="control-center" orientation={Gtk.Orientation.VERTICAL} spacing={10}>
                 <Header />
 
-                {/* Sliders */}
-                <box class="sliders" orientation={Gtk.Orientation.VERTICAL} spacing={4}>
+                {/* Audio & Display */}
+                <label class="section-label" label="Audio & Display" xalign={0} />
+                <box class="sliders" orientation={Gtk.Orientation.VERTICAL} spacing={6}>
                     <VolumeSlider />
                     <MicSlider />
                     <BrightnessSlider />
                 </box>
 
-                {/* Toggle grid */}
-                <box class="toggles" spacing={8} homogeneous>
-                    <WifiToggle />
-                    <BluetoothToggle />
-                </box>
-                <box class="toggles" spacing={8} homogeneous>
-                    <MicMuteToggle />
-                    <DndToggle />
+                {/* Quick Settings */}
+                <label class="section-label" label="Quick Settings" xalign={0} />
+                <box orientation={Gtk.Orientation.VERTICAL} spacing={4}>
+                    {/* Row 1: WiFi + BT (expandable) */}
+                    <box class="toggles" spacing={10} homogeneous>
+                        <WifiToggle />
+                        <BluetoothToggle />
+                    </box>
+
+                    {/* WiFi expandable panel */}
+                    <revealer
+                        revealChild={wifiExpanded()}
+                        transitionType={Gtk.RevealerTransitionType.SLIDE_DOWN}
+                        transitionDuration={200}>
+                        <WifiDetails />
+                    </revealer>
+
+                    {/* Bluetooth expandable panel */}
+                    <revealer
+                        revealChild={btExpanded()}
+                        transitionType={Gtk.RevealerTransitionType.SLIDE_DOWN}
+                        transitionDuration={200}>
+                        <BluetoothDetails />
+                    </revealer>
+
+                    {/* Row 2: Mic Mute + DND (no arrows) */}
+                    <box class="toggles" spacing={10} homogeneous>
+                        <MicMuteToggle />
+                        <DndToggle />
+                    </box>
                 </box>
 
                 {/* Media */}

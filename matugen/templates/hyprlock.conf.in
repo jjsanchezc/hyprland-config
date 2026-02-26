@@ -1,7 +1,7 @@
-$accent = rgb(adc6ff)
-$accentAlpha = rgba(173, 198, 255, 0.8)
-$text = rgb(e2e2e9)
-$background = rgb(111318)
+$accent = rgb({{colors.primary.default.hex_stripped}})
+$accentAlpha = rgba({{colors.primary.default.red}}, {{colors.primary.default.green}}, {{colors.primary.default.blue}}, 0.8)
+$text = rgb({{colors.on_surface.default.hex_stripped}})
+$background = rgb({{colors.surface.default.hex_stripped}})
 $font = JetBrainsMono Nerd Font
 
 # GENERAL
@@ -62,17 +62,17 @@ input-field {
     dots_size = 0.2
     dots_spacing = 0.2
     dots_center = true
-    outer_color = rgb(1e1f25)
-    inner_color = rgb(111318)
-    font_color = rgb(e2e2e9)
+    outer_color = rgb({{colors.surface_container.default.hex_stripped}})
+    inner_color = rgb({{colors.surface.default.hex_stripped}})
+    font_color = rgb({{colors.on_surface.default.hex_stripped}})
     fade_on_empty = false
     placeholder_text = Logged in as $USER
     hide_input = false
     check_color = $accent
-    fail_color = rgb(ffb4ab)
+    fail_color = rgb({{colors.error.default.hex_stripped}})
     fail_text = <i>$FAIL <b>($ATTEMPTS)</b></i>
     font_family = monospace
-    capslock_color = rgb(debcdf)
+    capslock_color = rgb({{colors.tertiary.default.hex_stripped}})
     position = 0, -35
     halign = center
     valign = center

@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+# Usage: wallpaper-set <image_path>
+# Changes wallpaper and regenerates Material You color theme via matugen
+
+if [[ -z "$1" ]]; then
+    echo "Usage: wallpaper-set <image_path>" >&2
+    exit 1
+fi
+
+WALLPAPER="$(realpath "$1")"
+
+if [[ ! -f "$WALLPAPER" ]]; then
+    echo "Error: file not found: $WALLPAPER" >&2
+    exit 1
+fi
+
+hyprctl hyprpaper preload "$WALLPAPER"
+hyprctl hyprpaper wallpaper ",$WALLPAPER"
+matugen image "$WALLPAPER"

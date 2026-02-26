@@ -1,19 +1,8 @@
-// Color palette
-$bg: #1c1c1c;
-$bg-alt: #252525;
-$bg-hover: #353535;
-$fg: #dfdfdf;
-$fg-dim: #808080;
-$accent: #729a72;
-$accent-bg: rgba(114, 154, 114, 0.25);
-$urgent: #976061;
-$border: #404040;
-$radius: 10px;
-$font: "JetBrainsMono Nerd Font";
+@use 'colors' as *;
 
 * {
     font-family: $font;
-    font-size: 13px;
+    font-size: 15px;
 }
 
 window {
@@ -21,21 +10,21 @@ window {
 }
 
 .control-center {
-    background-color: rgba(28, 28, 28, 0.95);
-    border-radius: 12px;
+    background-color: rgba($bg, 0.95);
+    border-radius: 14px;
     border: 1px solid $border;
-    padding: 12px;
-    min-width: 350px;
+    padding: 16px;
+    min-width: 460px;
 }
 
 // Header
 .header {
-    padding: 8px 4px;
+    padding: 10px 6px;
     margin-bottom: 4px;
 
     image {
         color: $fg;
-        -gtk-icon-size: 16px;
+        -gtk-icon-size: 20px;
     }
 
     label {
@@ -44,9 +33,9 @@ window {
 }
 
 .sys-button {
-    min-width: 32px;
-    min-height: 32px;
-    border-radius: 8px;
+    min-width: 40px;
+    min-height: 40px;
+    border-radius: 10px;
     background-color: $bg-alt;
     margin-left: 4px;
     padding: 4px;
@@ -57,7 +46,7 @@ window {
 
     image {
         color: $fg;
-        -gtk-icon-size: 16px;
+        -gtk-icon-size: 20px;
     }
 }
 
@@ -70,15 +59,15 @@ window {
     padding: 2px 0;
 
     button {
-        min-width: 32px;
-        min-height: 32px;
-        border-radius: 8px;
+        min-width: 40px;
+        min-height: 40px;
+        border-radius: 10px;
         background-color: transparent;
         padding: 4px;
 
         image {
             color: $accent;
-            -gtk-icon-size: 18px;
+            -gtk-icon-size: 22px;
         }
     }
 
@@ -86,24 +75,40 @@ window {
         margin: 0 4px;
 
         trough {
-            min-height: 8px;
-            border-radius: 4px;
+            min-height: 10px;
+            border-radius: 5px;
             background-color: $bg-hover;
         }
 
         highlight {
-            border-radius: 4px;
+            border-radius: 5px;
             background-color: $accent;
         }
 
         slider {
-            min-width: 16px;
-            min-height: 16px;
+            min-width: 20px;
+            min-height: 20px;
             border-radius: 50%;
             background-color: $fg;
-            margin: -4px;
+            margin: -5px;
         }
     }
+}
+
+.slider-value {
+    color: $fg-dim;
+    font-size: 13px;
+    min-width: 38px;
+}
+
+// Section labels
+.section-label {
+    color: $fg-dim;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    padding: 4px 4px 0 4px;
 }
 
 // Toggle buttons
@@ -114,7 +119,7 @@ window {
 .toggle-btn {
     border-radius: $radius;
     background-color: $bg-alt;
-    padding: 10px 12px;
+    padding: 12px 16px;
     transition: 200ms;
 
     &:hover {
@@ -135,19 +140,53 @@ window {
 
     image {
         color: $fg;
-        -gtk-icon-size: 18px;
+        -gtk-icon-size: 22px;
     }
 
     label {
         color: $fg-dim;
     }
+
+    .toggle-main {
+        background: transparent;
+        border-radius: $radius 0 0 $radius;
+        padding: 12px 8px 12px 16px;
+    }
+
+    .toggle-arrow {
+        background: transparent;
+        border-left: 1px solid rgba($border, 0.5);
+        border-radius: 0 $radius $radius 0;
+        padding: 12px 10px;
+        image { -gtk-icon-size: 16px; color: $fg-dim; }
+        &:hover { background-color: rgba($fg, 0.05); }
+    }
+}
+
+// Expandable details panel
+.details-panel {
+    background-color: $bg-alt;
+    border-radius: $radius;
+    padding: 8px;
+    margin-top: 2px;
+}
+
+.detail-item {
+    background: transparent;
+    border-radius: 8px;
+    padding: 8px 10px;
+    &:hover { background-color: $bg-hover; }
+
+    image { -gtk-icon-size: 16px; color: $fg; }
+    label { color: $fg; }
+    .detail-status { color: $fg-dim; font-size: 12px; }
 }
 
 // Media player
 .player {
     background-color: $bg-alt;
     border-radius: $radius;
-    padding: 10px;
+    padding: 14px;
     margin-top: 4px;
 
     .cover {
@@ -159,12 +198,12 @@ window {
     .title {
         color: $fg;
         font-weight: bold;
-        font-size: 14px;
+        font-size: 16px;
     }
 
     .artist {
         color: $fg-dim;
-        font-size: 12px;
+        font-size: 14px;
     }
 
     .player-icon {
@@ -173,8 +212,8 @@ window {
     }
 
     button {
-        min-width: 28px;
-        min-height: 28px;
+        min-width: 36px;
+        min-height: 36px;
         border-radius: 50%;
         background-color: transparent;
         padding: 0;
@@ -190,12 +229,12 @@ window {
     }
 
     .play-pause {
-        min-width: 32px;
-        min-height: 32px;
+        min-width: 40px;
+        min-height: 40px;
 
         image {
             color: $accent;
-            -gtk-icon-size: 20px;
+            -gtk-icon-size: 24px;
         }
     }
 }

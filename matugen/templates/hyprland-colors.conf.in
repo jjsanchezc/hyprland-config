@@ -1,0 +1,4 @@
+general {
+  col.active_border = rgb({{colors.primary.default.hex_stripped}})
+  col.inactive_border = rgba({{colors.outline_variant.default.hex_stripped}}CC)
+}
