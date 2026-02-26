@@ -149,7 +149,7 @@ function BrightnessSlider() {
                 }}
             />
             <label class="slider-value"
-                label={brightnessVal()((v: number) => `${Math.round(v * 100)}%`)}
+                label={brightnessVal((v: number) => `${Math.round(v * 100)}%`)}
                 widthChars={4} xalign={1} />
         </box>
     )
@@ -190,7 +190,7 @@ function WifiToggle() {
                     setBtExpanded(false)
                     if (!wifiExpanded() && wifi) wifi.scan()
                 }}>
-                <image iconName={wifiExpanded()((e: boolean) => e ? "pan-down-symbolic" : "pan-end-symbolic")} />
+                <image iconName={wifiExpanded((e: boolean) => e ? "pan-down-symbolic" : "pan-end-symbolic")} />
             </button>
         </box>
     )
@@ -230,7 +230,7 @@ function BluetoothToggle() {
                     setBtExpanded(!btExpanded())
                     setWifiExpanded(false)
                 }}>
-                <image iconName={btExpanded()((e: boolean) => e ? "pan-down-symbolic" : "pan-end-symbolic")} />
+                <image iconName={btExpanded((e: boolean) => e ? "pan-down-symbolic" : "pan-end-symbolic")} />
             </button>
         </box>
     )
