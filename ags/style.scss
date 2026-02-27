@@ -246,3 +246,38 @@ tooltip {
     padding: 4px 8px;
     color: $fg;
 }
+
+// Notifications
+.notification {
+    background-color: $bg-alt;
+    border-radius: 14px;
+    border: 2px solid $border;
+    padding: 18px 20px;
+    min-width: 400px;
+    transition: 200ms;
+
+    &:hover {
+        background-color: $bg-hover;
+    }
+
+    &.critical {
+        border-color: $urgent;
+    }
+}
+
+.notif-app {
+    color: $accent;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.notif-summary {
+    color: $fg;
+    font-weight: bold;
+    font-size: 15px;
+}
+
+.notif-body {
+    color: $fg-dim;
+    font-size: 14px;
+}

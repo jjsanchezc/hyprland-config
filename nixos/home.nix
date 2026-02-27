@@ -10,7 +10,6 @@
   home.file.".config/foot".source = ../foot;
   home.file.".config/hypr".source = ../hyprland;
   home.file.".config/lf".source = ../lf;
-  home.file.".config/mako".source = ../mako;
   home.file.".config/nvim".source = ../neovim;
   home.file.".config/rofi".source = ../rofi;
   home.file.".config/swayosd".source = ../swayosd;
@@ -43,7 +42,6 @@
     imv
     lazygit
     lf
-    mako
     neovim
     ripgrep
     unstable.impala

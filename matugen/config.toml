@@ -23,11 +23,6 @@ post_hook = "pkill -x ags; ags run &"
 input_path = "~/.config/matugen/templates/kitty-colors.conf.in"
 output_path = "~/.config/kitty/colors.conf"
 
-[templates.mako]
-input_path = "~/.config/matugen/templates/mako.conf.in"
-output_path = "~/.config/mako/config"
-post_hook = "pkill mako; mako &"
-
 [templates.rofi]
 input_path = "~/.config/matugen/templates/rofi.rasi.in"
 output_path = "~/.config/rofi/config.rasi"
