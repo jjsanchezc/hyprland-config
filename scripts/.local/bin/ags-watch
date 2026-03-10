@@ -1,0 +1,28 @@
+#!/usr/bin/env bash
+# Auto-restart AGS when source files change
+AGS_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/ags"
+INSTANCE="jjsanchezc-shell"
+LOG="/tmp/ags-watch.log"
+
+start_ags() {
+    for i in 1 2 3 4 5; do
+        ags run >> "$LOG" 2>&1 &
+        sleep 2
+        if ags list 2>/dev/null | grep -q "$INSTANCE"; then
+            echo "[$(date)] AGS started (attempt $i)" >> "$LOG"
+            return 0
+        fi
+        echo "[$(date)] AGS failed to start (attempt $i)" >> "$LOG"
+    done
+    echo "[$(date)] AGS failed after 5 attempts" >> "$LOG"
+    return 1
+}
+
+start_ags
+
+while inotifywait -r -e modify,create,delete \
+    --include '\.(ts|tsx|scss|css)$' "$AGS_DIR" 2>/dev/null; do
+    sleep 0.5
+    ags quit -i "$INSTANCE" 2>/dev/null
+    start_ags
+done
