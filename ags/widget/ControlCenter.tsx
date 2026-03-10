@@ -47,9 +47,28 @@ const uptime = createPoll("", 60_000, () => {
     return "0h 00m"
 })
 
+// === Power Profile (via asusctl) ===
+const [profileExpanded, setProfileExpanded] = createState(false)
+
+const currentProfile = createPoll("balanced", 30_000, () => {
+    try {
+        const out = decoder.decode(GLib.spawn_command_line_sync(
+            "bash -c \"asusctl profile -p 2>/dev/null | grep 'Active profile' | sed 's/Active profile is //' | tr '[:upper:]' '[:lower:]'\""
+        )[1] as any).trim()
+        return out || "balanced"
+    } catch { return "balanced" }
+})
+
 // === Expandable toggle state ===
 const [wifiExpanded, setWifiExpanded] = createState(false)
 const [btExpanded, setBtExpanded] = createState(false)
+const [powerExpanded, setPowerExpanded] = createState(false)
+const [powerConfirm, setPowerConfirm] = createState("")
+
+function resetWindowSize() {
+    const win = app.get_window("control-center")
+    if (win) win.set_default_size(1, 1)
+}
 
 // ============================================================
 //  HEADER
@@ -57,28 +76,85 @@ const [btExpanded, setBtExpanded] = createState(false)
 function Header() {
     return (
         <box class="header" spacing={10}>
-            <box orientation={Gtk.Orientation.VERTICAL} valign={Gtk.Align.CENTER} hexpand>
-                <box spacing={4} visible={createBinding(battery, "isPresent")}>
+            <box valign={Gtk.Align.CENTER} hexpand spacing={12}>
+                <box spacing={6} visible={createBinding(battery, "isPresent")}>
                     <image iconName={createBinding(battery, "iconName")} />
                     <label label={createBinding(battery, "percentage")((p) => `${Math.floor(p * 100)}%`)} />
                 </box>
-                <box spacing={4}>
+                <label class="header-sep" label="|"
+                    visible={createBinding(battery, "isPresent")} />
+                <box spacing={6}>
                     <image iconName="preferences-system-time-symbolic" />
                     <label label={uptime} />
                 </box>
             </box>
             <button class="sys-button" valign={Gtk.Align.CENTER}
-                onClicked={() => execAsync(["bash", "-c", "ags quit; ags run"])}>
-                <image iconName="emblem-synchronous-symbolic" />
-            </button>
-            <button class="sys-button" valign={Gtk.Align.CENTER}
-                onClicked={() => execAsync(["pkill", "Hyprland"])}>
-                <image iconName="system-log-out-symbolic" />
-            </button>
-            <button class="sys-button" valign={Gtk.Align.CENTER}
-                onClicked={() => execAsync(["shutdown", "now"])}>
+                onClicked={() => {
+                    setPowerExpanded(!powerExpanded())
+                    setPowerConfirm("")
+                }}>
                 <image iconName="system-shutdown-symbolic" />
             </button>
+        </box>
+    )
+}
+
+// ============================================================
+//  POWER PANEL (expandable)
+// ============================================================
+const powerActions = [
+    { id: "lock", label: "Lock", icon: "system-lock-screen-symbolic", cmd: ["hyprlock"] },
+    { id: "suspend", label: "Suspend", icon: "media-playback-pause-symbolic", cmd: ["systemctl", "suspend"] },
+    { id: "logout", label: "Logout", icon: "system-log-out-symbolic", cmd: ["pkill", "Hyprland"] },
+    { id: "reboot", label: "Reboot", icon: "system-reboot-symbolic", cmd: ["systemctl", "reboot"] },
+    { id: "shutdown", label: "Shutdown", icon: "system-shutdown-symbolic", cmd: ["systemctl", "poweroff"] },
+    { id: "reload", label: "Reload AGS", icon: "emblem-synchronous-symbolic", cmd: ["bash", "-c", "ags quit; ags run"] },
+]
+
+function PowerPanel() {
+    return (
+        <box class="power-panel" orientation={Gtk.Orientation.VERTICAL} spacing={4}>
+            {powerActions.map((action) => (
+                <box orientation={Gtk.Orientation.VERTICAL}>
+                    <button class="power-item"
+                        onClicked={() => {
+                            if (powerConfirm() === action.id) {
+                                execAsync(action.cmd)
+                                setPowerConfirm("")
+                                setPowerExpanded(false)
+                            } else {
+                                setPowerConfirm(action.id)
+                            }
+                        }}>
+                        <box spacing={8}>
+                            <image iconName={action.icon} />
+                            <label label={action.label} hexpand xalign={0} />
+                            <label class="power-hint"
+                                label={powerConfirm((c: string) => c === action.id ? "Click to confirm" : "")} />
+                        </box>
+                    </button>
+                    <revealer
+                        revealChild={powerConfirm((c: string) => c === action.id)}
+                        transitionType={Gtk.RevealerTransitionType.SLIDE_DOWN}
+                        transitionDuration={150}>
+                        <box class="power-confirm" spacing={8}>
+                            <label label={`Confirm ${action.label}?`} hexpand xalign={0} />
+                            <button class="confirm-yes"
+                                onClicked={() => {
+                                    execAsync(action.cmd)
+                                    setPowerConfirm("")
+                                    setPowerExpanded(false)
+                                }}>
+                                <label label="Yes" />
+                            </button>
+                            <button class="confirm-no"
+                                onClicked={() => setPowerConfirm("")}>
+                                <label label="No" />
+                            </button>
+                        </box>
+                    </revealer>
+                </box>
+            ))}
         </box>
     )
 }
@@ -243,22 +319,120 @@ function WifiDetails() {
     const wifi = network.wifi
     if (!wifi) return <box />
 
-    const aps = createBinding(wifi, "accessPoints")
+    const [showPassword, setShowPassword] = createState(false)
+    const [connectingSSID, setConnectingSSID] = createState("")
+    let pendingSSID = ""
+    let pwEntryRef: Gtk.Entry | null = null
+
+    const connectToAp = async (ssid: string, password?: string) => {
+        setConnectingSSID(ssid)
+        try {
+            if (password) {
+                await execAsync(["nmcli", "device", "wifi", "connect", ssid, "password", password])
+            } else {
+                const saved = (await execAsync(["bash", "-c", "nmcli -g NAME connection"])).trim()
+                if (saved.split("\n").includes(ssid)) {
+                    await execAsync(["nmcli", "connection", "up", "id", ssid])
+                } else {
+                    setConnectingSSID("")
+                    pendingSSID = ssid
+                    setShowPassword(true)
+                    if (pwEntryRef) pwEntryRef.set_text("")
+                    return
+                }
+            }
+            setShowPassword(false)
+            pendingSSID = ""
+            if (pwEntryRef) pwEntryRef.set_text("")
+            execAsync(["notify-send", "WiFi", `Connected to ${ssid}`])
+        } catch (e) {
+            execAsync(["notify-send", "-u", "critical", "WiFi", `Failed to connect to ${ssid}`])
+        }
+        setConnectingSSID("")
+    }
+
+    // Deduplicated APs sorted by signal, excluding active network
+    const availableAps = createBinding(wifi, "accessPoints")((aps: any[]) => {
+        const activeSsid = wifi.activeAccessPoint?.ssid
+        const seen = new Map()
+        for (const ap of aps) {
+            const ssid = ap.ssid
+            if (!ssid) continue
+            if (ssid === activeSsid) continue
+            if (!seen.has(ssid) || seen.get(ssid).strength < ap.strength) {
+                seen.set(ssid, ap)
+            }
+        }
+        return [...seen.values()].sort((a: any, b: any) => b.strength - a.strength)
+    })
 
     return (
         <box class="details-panel" orientation={Gtk.Orientation.VERTICAL} spacing={4}>
-            <For each={aps}>
+            {/* Connected network */}
+            <box class="detail-item connected" spacing={8}
+                visible={createBinding(wifi, "activeAccessPoint")((ap) => ap !== null)}>
+                <image iconName={createBinding(wifi, "iconName")} />
+                <label label={createBinding(wifi, "ssid")((s) => s || "Connected")}
+                    hexpand xalign={0} maxWidthChars={20} ellipsize={3} />
+                <label class="ap-strength"
+                    label={createBinding(wifi, "strength")((s) => `${s}%`)} />
+                <label class="detail-status" label="Connected" />
+            </box>
+
+            <box spacing={8}>
+                <label class="detail-section-label" label="AVAILABLE" hexpand xalign={0} />
+                <button class="scan-btn"
+                    onClicked={() => wifi.scan()}>
+                    <image iconName="view-refresh-symbolic" />
+                </button>
+            </box>
+
+            <For each={availableAps}>
                 {(ap) => (
                     <button class="detail-item"
-                        onClicked={() => ap.activate(null, null)}>
+                        onClicked={() => {
+                            if (ap.ssid) connectToAp(ap.ssid)
+                        }}>
                         <box spacing={8}>
                             <image iconName={createBinding(ap, "iconName")} />
                             <label label={createBinding(ap, "ssid")((s) => s || "Hidden")}
                                 hexpand xalign={0} maxWidthChars={20} ellipsize={3} />
+                            <label class="ap-strength"
+                                label={createBinding(ap, "strength")((s) => `${s}%`)} />
                         </box>
                     </button>
                 )}
             </For>
+
+            {/* Inline password entry */}
+            <box class="password-row" spacing={8}
+                visible={showPassword()}>
+                <entry
+                    hexpand
+                    $={(self) => {
+                        self.set_visibility(false)
+                        self.set_placeholder_text("Password")
+                        pwEntryRef = self
+                        const key = new Gtk.EventControllerKey()
+                        key.connect("key-pressed", (_: any, keyval: number) => {
+                            if (keyval === Gdk.KEY_Return && pendingSSID) {
+                                connectToAp(pendingSSID, self.get_text())
+                                return true
+                            }
+                            return false
+                        })
+                        self.add_controller(key)
+                    }}
+                />
+                <button class="connect-btn"
+                    onClicked={() => {
+                        if (pendingSSID && pwEntryRef) {
+                            connectToAp(pendingSSID, pwEntryRef.get_text())
+                        }
+                    }}>
+                    <label label="Connect" />
+                </button>
+            </box>
         </box>
     )
 }
@@ -271,19 +445,41 @@ function BluetoothDetails() {
 
     return (
         <box class="details-panel" orientation={Gtk.Orientation.VERTICAL} spacing={4}>
+            <box spacing={8}>
+                <label class="detail-section-label" label="CONNECTED" hexpand xalign={0} />
+                <button class="scan-btn"
+                    onClicked={() => bt.adapter?.start_discovery()}>
+                    <image iconName="view-refresh-symbolic" />
+                </button>
+            </box>
+
             <For each={devices}>
                 {(dev) => (
-                    <button class="detail-item"
-                        onClicked={() => {
-                            if (dev.connected) dev.disconnect_device(null)
-                            else dev.connect_device(null)
-                        }}>
+                    <button class="detail-item connected"
+                        visible={createBinding(dev, "connected")}
+                        onClicked={() => dev.disconnect_device(null)}>
                         <box spacing={8}>
                             <image iconName={`${dev.icon}-symbolic`} />
                             <label label={dev.alias} hexpand xalign={0}
                                 maxWidthChars={20} ellipsize={3} />
-                            <label class="detail-status"
-                                label={dev.connected ? "Connected" : "Paired"} />
+                            <label class="detail-status" label="Connected" />
+                        </box>
+                    </button>
+                )}
+            </For>
+
+            <label class="detail-section-label" label="PAIRED" xalign={0} />
+
+            <For each={devices}>
+                {(dev) => (
+                    <button class="detail-item"
+                        visible={createBinding(dev, "connected")((c) => !c)}
+                        onClicked={() => dev.connect_device(null)}>
+                        <box spacing={8}>
+                            <image iconName={`${dev.icon}-symbolic`} />
+                            <label label={dev.alias} hexpand xalign={0}
+                                maxWidthChars={20} ellipsize={3} />
+                            <label class="detail-status" label="Paired" />
                         </box>
                     </button>
                 )}
@@ -293,36 +489,11 @@ function BluetoothDetails() {
 }
 
 // ============================================================
-//  MIC MUTE TOGGLE
-// ============================================================
-function MicMuteToggle() {
-    return (
-        <button class="toggle-btn"
-            $={(self) => {
-                const update = () => {
-                    if (mic.mute) self.add_css_class("active")
-                    else self.remove_css_class("active")
-                }
-                mic.connect("notify::mute", update)
-                update()
-            }}
-            onClicked={() => mic.set_mute(!mic.mute)}>
-            <box spacing={8}>
-                <image iconName={createBinding(mic, "mute")((m) =>
-                    m ? "microphone-sensitivity-muted-symbolic" : "audio-input-microphone-symbolic"
-                )} />
-                <label label={createBinding(mic, "mute")((m) => m ? "Muted" : "Unmuted")} />
-            </box>
-        </button>
-    )
-}
-
-// ============================================================
 //  DND TOGGLE (uses notifd binding for persistent state)
 // ============================================================
 function DndToggle() {
     return (
-        <button class="toggle-btn"
+        <button class="toggle-btn" hexpand
             $={(self) => {
                 const update = () => {
                     if (notifd.dont_disturb) self.add_css_class("active")
@@ -339,9 +510,92 @@ function DndToggle() {
                     d ? "notifications-disabled-symbolic"
                       : "preferences-system-notifications-symbolic"
                 )} />
-                <label label={createBinding(notifd, "dontDisturb")((d) => d ? "Silent" : "Noisy")} />
+                <label label={createBinding(notifd, "dontDisturb")((d) => d ? "Do Not Disturb" : "Notifications")} />
             </box>
         </button>
+    )
+}
+
+// ============================================================
+//  POWER PROFILE TOGGLE (expandable)
+// ============================================================
+const profileModes = [
+    { id: "quiet", label: "Quiet", icon: "weather-clear-night-symbolic" },
+    { id: "balanced", label: "Balanced", icon: "power-profile-balanced-symbolic" },
+    { id: "performance", label: "Performance", icon: "power-profile-performance-symbolic" },
+]
+
+function PowerProfileToggle() {
+    return (
+        <box class="toggle-btn"
+            $={(self) => {
+                const update = () => {
+                    const p = currentProfile()
+                    self.remove_css_class("profile-quiet")
+                    self.remove_css_class("profile-balanced")
+                    self.remove_css_class("profile-performance")
+                    self.add_css_class(`profile-${p}`)
+                    self.add_css_class("active")
+                }
+                update()
+            }}>
+            <button class="toggle-main" hexpand
+                onClicked={() => {
+                    execAsync(["asusctl", "profile", "-n"])
+                        .then(() => {/* poll will update */})
+                        .catch(() => {})
+                }}>
+                <box spacing={8}>
+                    <image iconName={currentProfile((p: string) => {
+                        const mode = profileModes.find(m => m.id === p)
+                        return mode?.icon || "power-profile-balanced-symbolic"
+                    })} />
+                    <label label={currentProfile((p: string) => {
+                        const mode = profileModes.find(m => m.id === p)
+                        return mode?.label || "Balanced"
+                    })} hexpand xalign={0} />
+                </box>
+            </button>
+            <button class="toggle-arrow"
+                onClicked={() => {
+                    setProfileExpanded(!profileExpanded())
+                }}>
+                <image iconName={profileExpanded((e: boolean) => e ? "pan-down-symbolic" : "pan-end-symbolic")} />
+            </button>
+        </box>
+    )
+}
+
+function PowerProfileDetails() {
+    return (
+        <box class="details-panel" orientation={Gtk.Orientation.VERTICAL} spacing={4}>
+            {profileModes.map((mode) => (
+                <button class="detail-item"
+                    $={(self) => {
+                        const check = () => {
+                            if (currentProfile() === mode.id) {
+                                self.add_css_class("connected")
+                            } else {
+                                self.remove_css_class("connected")
+                            }
+                        }
+                        check()
+                    }}
+                    onClicked={() => {
+                        execAsync(["bash", "-c", `asusctl profile --profile-set ${mode.id}`])
+                            .catch(() => execAsync(["bash", "-c",
+                                `while [ "$(asusctl profile -p | grep -oP '(?<=is )\\w+' | tr '[:upper:]' '[:lower:]')" != "${mode.id}" ]; do asusctl profile -n; done`
+                            ]).catch(() => {}))
+                    }}>
+                    <box spacing={8}>
+                        <image iconName={mode.icon} />
+                        <label label={mode.label} hexpand xalign={0} />
+                        <label class="detail-status"
+                            label={currentProfile((p: string) => p === mode.id ? "Active" : "")} />
+                    </box>
+                </button>
+            ))}
+        </box>
     )
 }
 
@@ -450,6 +704,19 @@ export default function ControlCenter() {
             <box class="control-center" orientation={Gtk.Orientation.VERTICAL} spacing={10}>
                 <Header />
 
+                {/* Power panel (expandable) */}
+                <revealer
+                    revealChild={powerExpanded}
+                    transitionType={Gtk.RevealerTransitionType.SLIDE_DOWN}
+                    transitionDuration={200}
+                    $={(self) => {
+                        self.connect("notify::child-revealed", () => {
+                            if (!self.child_revealed) resetWindowSize()
+                        })
+                    }}>
+                    <PowerPanel />
+                </revealer>
+
                 {/* Audio & Display */}
                 <label class="section-label" label="Audio & Display" xalign={0} />
                 <box class="sliders" orientation={Gtk.Orientation.VERTICAL} spacing={6}>
@@ -469,25 +736,48 @@ export default function ControlCenter() {
 
                     {/* WiFi expandable panel */}
                     <revealer
-                        revealChild={wifiExpanded()}
+                        revealChild={wifiExpanded}
                         transitionType={Gtk.RevealerTransitionType.SLIDE_DOWN}
-                        transitionDuration={200}>
+                        transitionDuration={200}
+                        $={(self) => {
+                            self.connect("notify::child-revealed", () => {
+                                if (!self.child_revealed) resetWindowSize()
+                            })
+                        }}>
                         <WifiDetails />
                     </revealer>
 
                     {/* Bluetooth expandable panel */}
                     <revealer
-                        revealChild={btExpanded()}
+                        revealChild={btExpanded}
                         transitionType={Gtk.RevealerTransitionType.SLIDE_DOWN}
-                        transitionDuration={200}>
+                        transitionDuration={200}
+                        $={(self) => {
+                            self.connect("notify::child-revealed", () => {
+                                if (!self.child_revealed) resetWindowSize()
+                            })
+                        }}>
                         <BluetoothDetails />
                     </revealer>
 
-                    {/* Row 2: Mic Mute + DND (no arrows) */}
+                    {/* Row 2: DND + Power Profile */}
                     <box class="toggles" spacing={10} homogeneous>
-                        <MicMuteToggle />
                         <DndToggle />
+                        <PowerProfileToggle />
                     </box>
+
+                    {/* Power profile expandable panel */}
+                    <revealer
+                        revealChild={profileExpanded}
+                        transitionType={Gtk.RevealerTransitionType.SLIDE_DOWN}
+                        transitionDuration={200}
+                        $={(self) => {
+                            self.connect("notify::child-revealed", () => {
+                                if (!self.child_revealed) resetWindowSize()
+                            })
+                        }}>
+                        <PowerProfileDetails />
+                    </revealer>
                 </box>
 
                 {/* Media */}

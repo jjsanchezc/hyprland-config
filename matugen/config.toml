@@ -17,7 +17,7 @@ post_hook = "pkill -SIGUSR2 waybar"
 [templates.ags_colors]
 input_path = "~/.config/matugen/templates/ags-colors.scss.in"
 output_path = "~/.config/ags/_colors.scss"
-post_hook = "pkill -x ags; ags run &"
+post_hook = "ags quit -i jjsanchezc-shell; ags run &"
 
 [templates.kitty_colors]
 input_path = "~/.config/matugen/templates/kitty-colors.conf.in"

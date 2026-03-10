@@ -24,11 +24,17 @@ window {
 
     image {
         color: $fg;
-        -gtk-icon-size: 20px;
+        -gtk-icon-size: 22px;
     }
 
     label {
         color: $fg;
+        font-size: 14px;
+    }
+
+    .header-sep {
+        color: $fg-dim;
+        font-size: 14px;
     }
 }
 
@@ -47,6 +53,47 @@ window {
     image {
         color: $fg;
         -gtk-icon-size: 20px;
+    }
+}
+
+// Power panel
+.power-panel {
+    background-color: $bg-alt;
+    border-radius: $radius;
+    padding: 8px;
+    margin-bottom: 4px;
+}
+
+.power-item {
+    background: transparent;
+    border-radius: 8px;
+    padding: 10px 12px;
+    &:hover { background-color: $bg-hover; }
+
+    image { -gtk-icon-size: 18px; color: $fg; }
+    label { color: $fg; }
+    .power-hint { color: $accent; font-size: 12px; }
+}
+
+.power-confirm {
+    padding: 6px 12px;
+
+    label { color: $fg-dim; font-size: 13px; }
+
+    .confirm-yes {
+        background-color: $urgent;
+        border-radius: 8px;
+        padding: 4px 14px;
+        label { color: $bg; font-weight: 600; }
+        &:hover { background-color: lighten($urgent, 5%); }
+    }
+
+    .confirm-no {
+        background-color: $bg-hover;
+        border-radius: 8px;
+        padding: 4px 14px;
+        label { color: $fg; }
+        &:hover { background-color: lighten($bg-hover, 5%); }
     }
 }
 
@@ -161,6 +208,24 @@ window {
         image { -gtk-icon-size: 16px; color: $fg-dim; }
         &:hover { background-color: rgba($fg, 0.05); }
     }
+
+    &.profile-quiet {
+        &.active {
+            background-color: rgba($accent-bg, 0.8);
+            image { color: #87d1eb; }
+        }
+    }
+    &.profile-balanced {
+        &.active {
+            background-color: $accent-bg;
+        }
+    }
+    &.profile-performance {
+        &.active {
+            background-color: rgba(#ffb4ab, 0.15);
+            image { color: #ffb4ab; }
+        }
+    }
 }
 
 // Expandable details panel
@@ -180,6 +245,55 @@ window {
     image { -gtk-icon-size: 16px; color: $fg; }
     label { color: $fg; }
     .detail-status { color: $fg-dim; font-size: 12px; }
+
+    &.connected {
+        background-color: rgba($accent, 0.15);
+        border-left: 3px solid $accent;
+        .detail-status { color: $accent; }
+    }
+}
+
+.ap-strength {
+    color: $fg-dim;
+    font-size: 12px;
+    min-width: 35px;
+}
+
+.password-row {
+    padding: 8px 10px;
+
+    entry {
+        background-color: $bg;
+        border: 1px solid $border;
+        border-radius: 8px;
+        padding: 6px 10px;
+        color: $fg;
+        min-height: 32px;
+    }
+
+    .connect-btn {
+        background-color: $accent;
+        border-radius: 8px;
+        padding: 6px 14px;
+        label { color: $bg; font-weight: 600; }
+        &:hover { background-color: lighten($accent, 5%); }
+    }
+}
+
+.scan-btn {
+    background: transparent;
+    border-radius: 8px;
+    padding: 4px 8px;
+    image { color: $fg-dim; -gtk-icon-size: 14px; }
+    &:hover { background-color: $bg-hover; }
+}
+
+.detail-section-label {
+    color: $fg-dim;
+    font-size: 10px;
+    font-weight: 600;
+    padding: 6px 10px 2px;
+    letter-spacing: 0.5px;
 }
 
 // Media player

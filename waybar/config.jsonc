@@ -1,17 +1,14 @@
 {
     "layer": "top",
     "position": "top",
-    "mod": "dock",
+    "mode": "dock",
     "exclusive": true,
     "passthrough": false,
     "gtk-layer-shell": true,
     "height": 50,
     "modules-left": ["hyprland/workspaces"],
-    "modules-center": ["clock","custom/power"],
-    "modules-right": ["cpu", "memory", "custom/power_profile", "network", "bluetooth", "pulseaudio", "pulseaudio#microphone", "battery", "backlight", "tray"],
-    "hyprland/window": {
-        "format": "{}"
-    },
+    "modules-center": ["clock"],
+    "modules-right": ["cpu", "memory", "network", "bluetooth", "pulseaudio", "pulseaudio#microphone", "battery", "backlight", "tray", "custom/power"],
 
     "hyprland/workspaces": {
         "disable-scroll": true,
@@ -30,23 +27,6 @@
         }
     },
 
-    "custom/control_center": {
-        "format": "",
-        "tooltip": true,
-        "tooltip-format": "Quick Settings",
-        "on-click": "$HOME/.local/bin/control-center"
-    },
-
-    "custom/power_profile":{
-        //shows the current power profile and switches to next on click
-        "return-type": "json",
-        "exec": "profile=$(asusctl profile -p 2>/dev/null | grep 'Active profile' | sed 's/Active profile is //' | tr '[:upper:]' '[:lower:]'); echo \"{\\\"text\\\":\\\"$profile\\\",\\\"class\\\":\\\"$profile\\\"}\"",
-        "interval": 30,
-        "format": "󰈐",
-        "on-click": "asusctl profile -n; pkill -SIGRTMIN+8 waybar",
-        "signal": 8
-    },
-
     "tray": {
         "icon-size": 18,
         "spacing": 10,
@@ -60,7 +40,7 @@
 
     "cpu": {
         "interval": 10,
-        "format": "{usage}%",
+        "format": "󰻠 {usage}%",
         "max-length": 10,
         "tooltip": false
     },
@@ -101,7 +81,7 @@
         "tooltip": false,
         "format-muted": "󰖁 Muted",
         "on-click": "pamixer -t",
-        "on-click-right": "foot -e wpctl status",
+        "on-click-right": "pavucontrol",
         "on-scroll-up": "pamixer -i 5",
         "on-scroll-down": "pamixer -d 5",
         "scroll-step": 5,
@@ -118,7 +98,7 @@
 
     "pulseaudio#microphone": {
         "format": "{format_source}",
-        "format-source": "󰍬",
+        "format-source": "󰍬 {volume}%",
         "format-source-muted": "󰍭",
         "on-click": "pamixer --default-source -t"
     },
@@ -131,8 +111,7 @@
         "tooltip-format": "{essid} - {signalStrength}% - {ifname} via {gwaddr}",
         "format-linked": "󰈂",
         "format-disconnected": "󰖪",
-        "format-alt": "{ifname}:{essid} {ipaddr}/{cidr}",
-        "on-click": "foot -e nmtui"
+        "on-click": "ags request toggle-cc"
     },
 
     "bluetooth": {
@@ -142,7 +121,7 @@
 	    "tooltip-format": "{device_alias}",
 	    "tooltip-format-connected": "󰂱 {device_enumerate}",
 	    "tooltip-format-enumerate-connected": "{device_alias}",
-	    "on-click": "foot -e bluetoothctl",
+	    "on-click": "ags request toggle-cc",
 	    "on-click-right": "bluetoothctl power toggle"
     },
 

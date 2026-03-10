@@ -1,10 +1,28 @@
 #!/usr/bin/env bash
-# Wallpaper picker using rofi — calls wallpaper-set on selection
+# Wallpaper picker using rofi — supports subfolder navigation
 
 WALLPAPER_DIR="$HOME/.config/hypr/Wallpapers"
+current_dir="$WALLPAPER_DIR"
 
-selected=$(ls "$WALLPAPER_DIR" | rofi -dmenu -p " Wallpaper" -i)
+while true; do
+    # Build list: add ".." if inside a subfolder, then list contents
+    entries=""
+    if [[ "$current_dir" != "$WALLPAPER_DIR" ]]; then
+        entries=".."$'\n'
+    fi
+    entries+="$(ls "$current_dir")"
 
-[[ -z "$selected" ]] && exit 0
+    selected=$(echo "$entries" | rofi -dmenu -p " Wallpaper" -i)
+    [[ -z "$selected" ]] && exit 0
 
-wallpaper-set "$WALLPAPER_DIR/$selected"
+    target="$current_dir/$selected"
+
+    if [[ "$selected" == ".." ]]; then
+        current_dir="$(dirname "$current_dir")"
+    elif [[ -d "$target" ]]; then
+        current_dir="$target"
+    elif [[ -f "$target" ]]; then
+        wallpaper-set "$target"
+        exit 0
+    fi
+done
