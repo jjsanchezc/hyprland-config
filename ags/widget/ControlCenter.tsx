@@ -50,14 +50,17 @@ const uptime = createPoll("", 60_000, () => {
 // === Power Profile (via asusctl) ===
 const [profileExpanded, setProfileExpanded] = createState(false)
 
-const currentProfile = createPoll("balanced", 30_000, () => {
+const getActiveProfile = () => {
     try {
         const out = decoder.decode(GLib.spawn_command_line_sync(
-            "bash -c \"asusctl profile -p 2>/dev/null | grep 'Active profile' | sed 's/Active profile is //' | tr '[:upper:]' '[:lower:]'\""
+            "bash -c \"asusctl profile get 2>/dev/null | sed 's/Active profile: //' | tr '[:upper:]' '[:lower:]'\""
         )[1] as any).trim()
         return out || "balanced"
     } catch { return "balanced" }
-})
+}
+
+const [currentProfileState, setCurrentProfile] = createState(getActiveProfile())
+const currentProfile = currentProfileState
 
 // === Expandable toggle state ===
 const [wifiExpanded, setWifiExpanded] = createState(false)
@@ -541,8 +544,8 @@ function PowerProfileToggle() {
             }}>
             <button class="toggle-main" hexpand
                 onClicked={() => {
-                    execAsync(["asusctl", "profile", "-n"])
-                        .then(() => {/* poll will update */})
+                    execAsync(["asusctl", "profile", "next"])
+                        .then(() => setCurrentProfile(getActiveProfile()))
                         .catch(() => {})
                 }}>
                 <box spacing={8}>
@@ -582,10 +585,10 @@ function PowerProfileDetails() {
                         check()
                     }}
                     onClicked={() => {
-                        execAsync(["bash", "-c", `asusctl profile --profile-set ${mode.id}`])
-                            .catch(() => execAsync(["bash", "-c",
-                                `while [ "$(asusctl profile -p | grep -oP '(?<=is )\\w+' | tr '[:upper:]' '[:lower:]')" != "${mode.id}" ]; do asusctl profile -n; done`
-                            ]).catch(() => {}))
+                        const name = mode.id.charAt(0).toUpperCase() + mode.id.slice(1)
+                        execAsync(["asusctl", "profile", "set", name])
+                            .then(() => setCurrentProfile(mode.id))
+                            .catch(() => {})
                     }}>
                     <box spacing={8}>
                         <image iconName={mode.icon} />

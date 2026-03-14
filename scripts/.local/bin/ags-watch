@@ -13,13 +13,17 @@ start_ags() {
         sleep 5
         if ags list 2>/dev/null | grep -q "$INSTANCE"; then
             echo "[$(date)] AGS started (attempt $i)" >> "$LOG"
-            # Re-aplicar wallpaper: al arrancar, hyprpaper falla antes de que el monitor esté listo
+            # Re-aplicar wallpaper solo si hyprpaper no tiene uno activo (race condition al boot)
             LAST_WP="${XDG_CACHE_HOME:-$HOME/.cache}/current-wallpaper"
             if [[ -f "$LAST_WP" ]]; then
                 wp="$(cat "$LAST_WP")"
-                hyprctl hyprpaper preload "$wp" 2>/dev/null
-                hyprctl hyprpaper wallpaper ",$wp" 2>/dev/null
-                echo "[$(date)] Wallpaper re-applied: $wp" >> "$LOG"
+                if ! hyprctl hyprpaper listactive 2>/dev/null | grep -q "/"; then
+                    hyprctl hyprpaper preload "$wp" 2>/dev/null
+                    hyprctl hyprpaper wallpaper ",$wp" 2>/dev/null
+                    echo "[$(date)] Wallpaper re-applied (hyprpaper had none active): $wp" >> "$LOG"
+                else
+                    echo "[$(date)] Wallpaper already active, skipping re-apply" >> "$LOG"
+                fi
             fi
             return 0
         fi

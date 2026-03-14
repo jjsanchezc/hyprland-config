@@ -2,7 +2,7 @@
 
 BATTERY_DEVICE=$(upower -e | grep BAT)
 KBD_DEVICE=$(brightnessctl --list | grep 'kbd_backlight' | awk -F"'" '{print $2}')
-current_state=""
+current_state=$(upower -i "$BATTERY_DEVICE" | grep -m1 "state:" | awk '{print $2}')
 
 # Ensure Hyprland is running
 if [ -z "$HYPRLAND_INSTANCE_SIGNATURE" ]; then
