@@ -1,4 +1,6 @@
 nixos/flake.lock
+hyprland/monitors.conf
+hyprland/workspaces.conf
 systemd/user/*
 !systemd/user/
 !systemd/user/battery-alert.service
