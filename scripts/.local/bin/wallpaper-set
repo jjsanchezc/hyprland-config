@@ -16,4 +16,12 @@ fi
 
 hyprctl hyprpaper preload "$WALLPAPER"
 hyprctl hyprpaper wallpaper ",$WALLPAPER"
+
+# Guardar último wallpaper para que ags-watch lo re-aplique al boot
+echo "$WALLPAPER" > "${XDG_CACHE_HOME:-$HOME/.cache}/current-wallpaper"
+
+# Actualizar hyprpaper.conf para que persista en reboots
+HYPRPAPER_CONF="${XDG_CONFIG_HOME:-$HOME/.config}/hypr/hyprpaper.conf"
+printf 'preload = %s\nwallpaper = ,contain:%s\n' "$WALLPAPER" "$WALLPAPER" > "$HYPRPAPER_CONF"
+
 matugen image "$WALLPAPER"

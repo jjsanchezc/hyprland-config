@@ -6,10 +6,21 @@ LOG="/tmp/ags-watch.log"
 
 start_ags() {
     for i in 1 2 3 4 5; do
+        pkill -f "ags run" 2>/dev/null
+        ags quit -i "$INSTANCE" 2>/dev/null
+        sleep 1
         ags run >> "$LOG" 2>&1 &
-        sleep 2
+        sleep 5
         if ags list 2>/dev/null | grep -q "$INSTANCE"; then
             echo "[$(date)] AGS started (attempt $i)" >> "$LOG"
+            # Re-aplicar wallpaper: al arrancar, hyprpaper falla antes de que el monitor esté listo
+            LAST_WP="${XDG_CACHE_HOME:-$HOME/.cache}/current-wallpaper"
+            if [[ -f "$LAST_WP" ]]; then
+                wp="$(cat "$LAST_WP")"
+                hyprctl hyprpaper preload "$wp" 2>/dev/null
+                hyprctl hyprpaper wallpaper ",$wp" 2>/dev/null
+                echo "[$(date)] Wallpaper re-applied: $wp" >> "$LOG"
+            fi
             return 0
         fi
         echo "[$(date)] AGS failed to start (attempt $i)" >> "$LOG"
