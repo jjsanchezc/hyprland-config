@@ -97,6 +97,39 @@ window {
     }
 }
 
+// Idle Timeouts Panel
+.idle-panel {
+    background-color: $bg-alt;
+    border-radius: $radius;
+    padding: 12px;
+    margin-bottom: 4px;
+
+    image { color: $accent; -gtk-icon-size: 18px; }
+    label { color: $fg; font-size: 13px; }
+
+    .idle-current {
+        color: $accent;
+        font-size: 12px;
+        font-weight: 600;
+    }
+}
+
+.preset-btn {
+    background-color: $bg-hover;
+    border-radius: 8px;
+    padding: 6px 4px;
+    transition: 150ms;
+
+    label { color: $fg-dim; font-size: 12px; }
+
+    &:hover { background-color: lighten($bg-hover, 5%); }
+
+    &.active {
+        background-color: $accent-bg;
+        label { color: $accent; font-weight: 600; }
+    }
+}
+
 // Sliders
 .sliders {
     padding: 4px 0;

@@ -68,6 +68,63 @@ const [btExpanded, setBtExpanded] = createState(false)
 const [powerExpanded, setPowerExpanded] = createState(false)
 const [powerConfirm, setPowerConfirm] = createState("")
 
+// === Idle Timeouts ===
+const HYPRIDLE_CONF = "/home/jjsanchezc/dotfiles-hypr/hyprland/hypridle.conf"
+
+const parseIdleTimeouts = (): { screenOff: number; suspend: number } => {
+    try {
+        const contents = GLib.file_get_contents(HYPRIDLE_CONF)
+        if (contents[0]) {
+            const text = decoder.decode(contents[1] as any)
+            const screenOffMatch = text.match(/timeout\s*=\s*(\d+)[^}]*?on-timeout\s*=\s*hyprctl dispatch dpms off/s)
+            const suspendMatch   = text.match(/timeout\s*=\s*(\d+)[^}]*?on-timeout\s*=\s*systemctl suspend/s)
+            return {
+                screenOff: screenOffMatch ? Number(screenOffMatch[1]) : 0,
+                suspend:   suspendMatch   ? Number(suspendMatch[1])   : 0,
+            }
+        }
+    } catch {}
+    return { screenOff: 600, suspend: 1800 }
+}
+
+const buildHypridleConf = (screenOff: number, suspend: number): string => {
+    const screenBlock = screenOff > 0 ? `
+listener {
+    timeout = ${screenOff}
+    on-timeout = hyprctl dispatch dpms off
+    on-resume = hyprctl dispatch dpms on
+}` : ""
+    const suspendBlock = suspend > 0 ? `
+listener {
+    timeout = ${suspend}
+    on-timeout = systemctl suspend
+}` : ""
+    return `general {
+    lock_cmd = pidof hyprlock || hyprlock
+    before_sleep_cmd = loginctl lock-session
+    after_sleep_cmd = pkill waybar; sleep 1; waybar &
+}
+
+listener {
+    timeout = 300
+    on-timeout = loginctl lock-session
+}
+${screenBlock}
+${suspendBlock}
+`
+}
+
+const initTimeouts = parseIdleTimeouts()
+const [screenOffSecs, setScreenOffSecs] = createState(initTimeouts.screenOff)
+const [suspendSecs,   setSuspendSecs]   = createState(initTimeouts.suspend)
+const [idleExpanded,  setIdleExpanded]  = createState(false)
+
+const applyIdleTimeouts = async (screenOff: number, suspend: number) => {
+    const conf = buildHypridleConf(screenOff, suspend)
+    GLib.file_set_contents(HYPRIDLE_CONF, conf)
+    await execAsync(["bash", "-c", "killall hypridle 2>/dev/null; sleep 0.3; hypridle &"])
+}
+
 function resetWindowSize() {
     const win = app.get_window("control-center")
     if (win) win.set_default_size(1, 1)
@@ -93,8 +150,17 @@ function Header() {
             </box>
             <button class="sys-button" valign={Gtk.Align.CENTER}
                 onClicked={() => {
+                    setIdleExpanded(!idleExpanded())
+                    setPowerExpanded(false)
+                    setPowerConfirm("")
+                }}>
+                <image iconName="alarm-symbolic" />
+            </button>
+            <button class="sys-button" valign={Gtk.Align.CENTER}
+                onClicked={() => {
                     setPowerExpanded(!powerExpanded())
                     setPowerConfirm("")
+                    setIdleExpanded(false)
                 }}>
                 <image iconName="system-shutdown-symbolic" />
             </button>
@@ -158,6 +224,100 @@ function PowerPanel() {
                     </revealer>
                 </box>
             ))}
+        </box>
+    )
+}
+
+// ============================================================
+//  IDLE TIMEOUTS PANEL
+// ============================================================
+const SCREEN_OFF_PRESETS = [
+    { label: "5m",    secs: 300  },
+    { label: "10m",   secs: 600  },
+    { label: "15m",   secs: 900  },
+    { label: "30m",   secs: 1800 },
+    { label: "Never", secs: 0    },
+]
+const SUSPEND_PRESETS = [
+    { label: "15m",   secs: 900  },
+    { label: "30m",   secs: 1800 },
+    { label: "1h",    secs: 3600 },
+    { label: "2h",    secs: 7200 },
+    { label: "Never", secs: 0    },
+]
+
+function IdleTimeoutsPanel() {
+    const screenBtns = new Map<number, any>()
+    const suspendBtns = new Map<number, any>()
+
+    const refreshScreenBtns = (active: number) => {
+        for (const [secs, btn] of screenBtns) {
+            if (secs === active) btn.add_css_class("active")
+            else btn.remove_css_class("active")
+        }
+    }
+    const refreshSuspendBtns = (active: number) => {
+        for (const [secs, btn] of suspendBtns) {
+            if (secs === active) btn.add_css_class("active")
+            else btn.remove_css_class("active")
+        }
+    }
+
+    return (
+        <box class="idle-panel" orientation={Gtk.Orientation.VERTICAL} spacing={10}>
+            <box orientation={Gtk.Orientation.VERTICAL} spacing={6}>
+                <box spacing={6}>
+                    <image iconName="display-brightness-symbolic" />
+                    <label label="Screen Off" hexpand xalign={0} />
+                    <label class="idle-current"
+                        label={screenOffSecs((s: number) =>
+                            s === 0 ? "Never" : s < 3600 ? `${s / 60}m` : `${s / 3600}h`
+                        )} />
+                </box>
+                <box class="preset-row" spacing={4} homogeneous>
+                    {SCREEN_OFF_PRESETS.map(p => (
+                        <button class="preset-btn"
+                            $={(self) => {
+                                screenBtns.set(p.secs, self)
+                                if (screenOffSecs() === p.secs) self.add_css_class("active")
+                            }}
+                            onClicked={() => {
+                                setScreenOffSecs(p.secs)
+                                refreshScreenBtns(p.secs)
+                                applyIdleTimeouts(p.secs, suspendSecs())
+                            }}>
+                            <label label={p.label} />
+                        </button>
+                    ))}
+                </box>
+            </box>
+
+            <box orientation={Gtk.Orientation.VERTICAL} spacing={6}>
+                <box spacing={6}>
+                    <image iconName="system-suspend-symbolic" />
+                    <label label="Suspend" hexpand xalign={0} />
+                    <label class="idle-current"
+                        label={suspendSecs((s: number) =>
+                            s === 0 ? "Never" : s < 3600 ? `${s / 60}m` : `${s / 3600}h`
+                        )} />
+                </box>
+                <box class="preset-row" spacing={4} homogeneous>
+                    {SUSPEND_PRESETS.map(p => (
+                        <button class="preset-btn"
+                            $={(self) => {
+                                suspendBtns.set(p.secs, self)
+                                if (suspendSecs() === p.secs) self.add_css_class("active")
+                            }}
+                            onClicked={() => {
+                                setSuspendSecs(p.secs)
+                                refreshSuspendBtns(p.secs)
+                                applyIdleTimeouts(screenOffSecs(), p.secs)
+                            }}>
+                            <label label={p.label} />
+                        </button>
+                    ))}
+                </box>
+            </box>
         </box>
     )
 }
@@ -718,6 +878,19 @@ export default function ControlCenter() {
                         })
                     }}>
                     <PowerPanel />
+                </revealer>
+
+                {/* Idle Timeouts panel (expandable) */}
+                <revealer
+                    revealChild={idleExpanded}
+                    transitionType={Gtk.RevealerTransitionType.SLIDE_DOWN}
+                    transitionDuration={200}
+                    $={(self) => {
+                        self.connect("notify::child-revealed", () => {
+                            if (!self.child_revealed) resetWindowSize()
+                        })
+                    }}>
+                    <IdleTimeoutsPanel />
                 </revealer>
 
                 {/* Audio & Display */}
