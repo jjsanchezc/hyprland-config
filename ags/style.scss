@@ -114,6 +114,39 @@ window {
     }
 }
 
+.idle-tab-strip {
+    background-color: $bg;
+    border-radius: 8px;
+    padding: 3px;
+    margin-bottom: 4px;
+}
+
+.idle-tab {
+    background: transparent;
+    border-radius: 6px;
+    padding: 6px 8px;
+    transition: 150ms;
+
+    label { color: $fg-dim; font-size: 12px; font-weight: 500; }
+    image { color: $fg-dim; -gtk-icon-size: 14px; }
+
+    &:hover { background-color: $bg-hover; }
+
+    &.active {
+        background-color: $accent-bg;
+        label { color: $accent; font-weight: 700; }
+        image { color: $accent; }
+    }
+}
+
+.live-dot {
+    min-width: 7px;
+    min-height: 7px;
+    border-radius: 50%;
+    background-color: $accent;
+    margin-left: 2px;
+}
+
 .preset-btn {
     background-color: $bg-hover;
     border-radius: 8px;

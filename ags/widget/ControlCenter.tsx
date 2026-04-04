@@ -69,25 +69,61 @@ const [powerExpanded, setPowerExpanded] = createState(false)
 const [powerConfirm, setPowerConfirm] = createState("")
 
 // === Idle Timeouts ===
-const HYPRIDLE_CONF = "/home/jjsanchezc/dotfiles-hypr/hyprland/hypridle.conf"
+const HYPRIDLE_CONF  = "/home/jjsanchezc/dotfiles-hypr/hyprland/hypridle.conf"
+const PROFILES_FILE  = "/home/jjsanchezc/.config/ags/hypridle-profiles.json"
 
-const parseIdleTimeouts = (): { screenOff: number; suspend: number } => {
+type IdleProfile = { lock: number; screenOff: number; suspend: number }
+type ProfileKey  = "battery" | "charging"
+
+const DEFAULT_PROFILES: Record<ProfileKey, IdleProfile> = {
+    battery:  { lock: 120,  screenOff: 300,  suspend: 900 },
+    charging: { lock: 600,  screenOff: 900,  suspend: 0   },
+}
+
+const parseIdleTimeouts = (): IdleProfile => {
     try {
         const contents = GLib.file_get_contents(HYPRIDLE_CONF)
         if (contents[0]) {
             const text = decoder.decode(contents[1] as any)
+            const lockMatch      = text.match(/timeout\s*=\s*(\d+)[^}]*?on-timeout\s*=\s*loginctl lock-session/s)
             const screenOffMatch = text.match(/timeout\s*=\s*(\d+)[^}]*?on-timeout\s*=\s*hyprctl dispatch dpms off/s)
             const suspendMatch   = text.match(/timeout\s*=\s*(\d+)[^}]*?on-timeout\s*=\s*systemctl suspend/s)
             return {
+                lock:      lockMatch      ? Number(lockMatch[1])      : 300,
                 screenOff: screenOffMatch ? Number(screenOffMatch[1]) : 0,
                 suspend:   suspendMatch   ? Number(suspendMatch[1])   : 0,
             }
         }
     } catch {}
-    return { screenOff: 600, suspend: 1800 }
+    return { lock: 300, screenOff: 600, suspend: 1800 }
 }
 
-const buildHypridleConf = (screenOff: number, suspend: number): string => {
+const loadProfiles = (): Record<ProfileKey, IdleProfile> => {
+    try {
+        const result = GLib.file_get_contents(PROFILES_FILE)
+        if (result[0]) {
+            const parsed = JSON.parse(decoder.decode(result[1] as any))
+            return {
+                battery:  { ...DEFAULT_PROFILES.battery,  ...parsed.battery  },
+                charging: { ...DEFAULT_PROFILES.charging, ...parsed.charging },
+            }
+        }
+    } catch {}
+    // First run: seed both profiles from the current hypridle.conf
+    const current = parseIdleTimeouts()
+    return { battery: current, charging: current }
+}
+
+const saveProfiles = (bat: IdleProfile, chg: IdleProfile) => {
+    GLib.file_set_contents(PROFILES_FILE, JSON.stringify({ battery: bat, charging: chg }, null, 2))
+}
+
+const buildHypridleConf = (lock: number, screenOff: number, suspend: number): string => {
+    const lockBlock = lock > 0 ? `
+listener {
+    timeout = ${lock}
+    on-timeout = loginctl lock-session
+}` : ""
     const screenBlock = screenOff > 0 ? `
 listener {
     timeout = ${screenOff}
@@ -104,26 +140,40 @@ listener {
     before_sleep_cmd = loginctl lock-session
     after_sleep_cmd = pkill waybar; sleep 1; waybar &
 }
-
-listener {
-    timeout = 300
-    on-timeout = loginctl lock-session
-}
+${lockBlock}
 ${screenBlock}
 ${suspendBlock}
 `
 }
 
-const initTimeouts = parseIdleTimeouts()
-const [screenOffSecs, setScreenOffSecs] = createState(initTimeouts.screenOff)
-const [suspendSecs,   setSuspendSecs]   = createState(initTimeouts.suspend)
-const [idleExpanded,  setIdleExpanded]  = createState(false)
+const isOnAC = (state: any) =>
+    state === (AstalBattery as any).State?.CHARGING ||
+    state === (AstalBattery as any).State?.FULLY_CHARGED ||
+    Number(state) === 1 || Number(state) === 4
 
-const applyIdleTimeouts = async (screenOff: number, suspend: number) => {
-    const conf = buildHypridleConf(screenOff, suspend)
+const applyIdleTimeouts = async (profile: IdleProfile) => {
+    const conf = buildHypridleConf(profile.lock, profile.screenOff, profile.suspend)
     GLib.file_set_contents(HYPRIDLE_CONF, conf)
     await execAsync(["bash", "-c", "killall hypridle 2>/dev/null; sleep 0.3; hypridle &"])
 }
+
+const initProfiles = loadProfiles()
+const [batteryProfile,  setBatteryProfile]  = createState<IdleProfile>(initProfiles.battery)
+const [chargingProfile, setChargingProfile] = createState<IdleProfile>(initProfiles.charging)
+const [editingProfile,  setEditingProfile]  = createState<ProfileKey>(
+    isOnAC(battery.state) ? "charging" : "battery"
+)
+const [idleExpanded, setIdleExpanded] = createState(false)
+
+// Apply correct profile on startup
+applyIdleTimeouts(isOnAC(battery.state) ? chargingProfile() : batteryProfile())
+
+// Auto-switch on plug/unplug
+battery.connect("notify::state", () => {
+    const onAC = isOnAC(battery.state)
+    applyIdleTimeouts(onAC ? chargingProfile() : batteryProfile())
+    setEditingProfile(onAC ? "charging" : "battery")
+})
 
 function resetWindowSize() {
     const win = app.get_window("control-center")
@@ -231,6 +281,13 @@ function PowerPanel() {
 // ============================================================
 //  IDLE TIMEOUTS PANEL
 // ============================================================
+const LOCK_PRESETS = [
+    { label: "2m",    secs: 120  },
+    { label: "5m",    secs: 300  },
+    { label: "10m",   secs: 600  },
+    { label: "15m",   secs: 900  },
+    { label: "Never", secs: 0    },
+]
 const SCREEN_OFF_PRESETS = [
     { label: "5m",    secs: 300  },
     { label: "10m",   secs: 600  },
@@ -246,45 +303,92 @@ const SUSPEND_PRESETS = [
     { label: "Never", secs: 0    },
 ]
 
-function IdleTimeoutsPanel() {
-    const screenBtns = new Map<number, any>()
-    const suspendBtns = new Map<number, any>()
+const secsLabel = (s: number) => s === 0 ? "Never" : s < 3600 ? `${s / 60}m` : `${s / 3600}h`
 
-    const refreshScreenBtns = (active: number) => {
-        for (const [secs, btn] of screenBtns) {
+function IdleTimeoutsPanel() {
+    const lockBtns    = new Map<number, any>()
+    const screenBtns  = new Map<number, any>()
+    const suspendBtns = new Map<number, any>()
+    const tabBtns     = new Map<ProfileKey, any>()
+
+    const refreshBtns = (map: Map<number, any>, active: number) => {
+        for (const [secs, btn] of map) {
             if (secs === active) btn.add_css_class("active")
             else btn.remove_css_class("active")
         }
     }
-    const refreshSuspendBtns = (active: number) => {
-        for (const [secs, btn] of suspendBtns) {
-            if (secs === active) btn.add_css_class("active")
+
+    const activeProfile = () =>
+        editingProfile() === "battery" ? batteryProfile() : chargingProfile()
+
+    const updateField = async (field: keyof IdleProfile, value: number) => {
+        const updated = { ...activeProfile(), [field]: value }
+        if (editingProfile() === "battery") {
+            setBatteryProfile(updated)
+            saveProfiles(updated, chargingProfile())
+            if (!isOnAC(battery.state)) await applyIdleTimeouts(updated)
+        } else {
+            setChargingProfile(updated)
+            saveProfiles(batteryProfile(), updated)
+            if (isOnAC(battery.state)) await applyIdleTimeouts(updated)
+        }
+    }
+
+    const switchTab = (key: ProfileKey) => {
+        setEditingProfile(key)
+        for (const [k, btn] of tabBtns) {
+            if (k === key) btn.add_css_class("active")
             else btn.remove_css_class("active")
         }
+        const p = key === "battery" ? batteryProfile() : chargingProfile()
+        refreshBtns(lockBtns,    p.lock)
+        refreshBtns(screenBtns,  p.screenOff)
+        refreshBtns(suspendBtns, p.suspend)
     }
 
     return (
         <box class="idle-panel" orientation={Gtk.Orientation.VERTICAL} spacing={10}>
+            {/* Tab strip */}
+            <box class="idle-tab-strip" spacing={0} homogeneous>
+                {(["battery", "charging"] as ProfileKey[]).map((key) => (
+                    <button class="idle-tab"
+                        $={(self) => {
+                            tabBtns.set(key, self)
+                            if (editingProfile() === key) self.add_css_class("active")
+                        }}
+                        onClicked={() => switchTab(key)}>
+                        <box spacing={6} halign={Gtk.Align.CENTER}>
+                            <image iconName={key === "battery" ? "battery-symbolic" : "ac-adapter-symbolic"} />
+                            <label label={key === "battery" ? "Battery" : "Charging"} />
+                            <box class="live-dot"
+                                visible={createBinding(battery, "state")((s: any) =>
+                                    (isOnAC(s) ? "charging" : "battery") === key
+                                )} />
+                        </box>
+                    </button>
+                ))}
+            </box>
+
+            {/* Lock Screen row */}
             <box orientation={Gtk.Orientation.VERTICAL} spacing={6}>
                 <box spacing={6}>
-                    <image iconName="display-brightness-symbolic" />
-                    <label label="Screen Off" hexpand xalign={0} />
+                    <image iconName="system-lock-screen-symbolic" />
+                    <label label="Lock Screen" hexpand xalign={0} />
                     <label class="idle-current"
-                        label={screenOffSecs((s: number) =>
-                            s === 0 ? "Never" : s < 3600 ? `${s / 60}m` : `${s / 3600}h`
+                        label={editingProfile((k: ProfileKey) =>
+                            secsLabel(k === "battery" ? batteryProfile().lock : chargingProfile().lock)
                         )} />
                 </box>
                 <box class="preset-row" spacing={4} homogeneous>
-                    {SCREEN_OFF_PRESETS.map(p => (
+                    {LOCK_PRESETS.map(p => (
                         <button class="preset-btn"
                             $={(self) => {
-                                screenBtns.set(p.secs, self)
-                                if (screenOffSecs() === p.secs) self.add_css_class("active")
+                                lockBtns.set(p.secs, self)
+                                if (activeProfile().lock === p.secs) self.add_css_class("active")
                             }}
                             onClicked={() => {
-                                setScreenOffSecs(p.secs)
-                                refreshScreenBtns(p.secs)
-                                applyIdleTimeouts(p.secs, suspendSecs())
+                                refreshBtns(lockBtns, p.secs)
+                                updateField("lock", p.secs)
                             }}>
                             <label label={p.label} />
                         </button>
@@ -292,13 +396,41 @@ function IdleTimeoutsPanel() {
                 </box>
             </box>
 
+            {/* Screen Off row */}
+            <box orientation={Gtk.Orientation.VERTICAL} spacing={6}>
+                <box spacing={6}>
+                    <image iconName="display-brightness-symbolic" />
+                    <label label="Screen Off" hexpand xalign={0} />
+                    <label class="idle-current"
+                        label={editingProfile((k: ProfileKey) =>
+                            secsLabel(k === "battery" ? batteryProfile().screenOff : chargingProfile().screenOff)
+                        )} />
+                </box>
+                <box class="preset-row" spacing={4} homogeneous>
+                    {SCREEN_OFF_PRESETS.map(p => (
+                        <button class="preset-btn"
+                            $={(self) => {
+                                screenBtns.set(p.secs, self)
+                                if (activeProfile().screenOff === p.secs) self.add_css_class("active")
+                            }}
+                            onClicked={() => {
+                                refreshBtns(screenBtns, p.secs)
+                                updateField("screenOff", p.secs)
+                            }}>
+                            <label label={p.label} />
+                        </button>
+                    ))}
+                </box>
+            </box>
+
+            {/* Suspend row */}
             <box orientation={Gtk.Orientation.VERTICAL} spacing={6}>
                 <box spacing={6}>
                     <image iconName="system-suspend-symbolic" />
                     <label label="Suspend" hexpand xalign={0} />
                     <label class="idle-current"
-                        label={suspendSecs((s: number) =>
-                            s === 0 ? "Never" : s < 3600 ? `${s / 60}m` : `${s / 3600}h`
+                        label={editingProfile((k: ProfileKey) =>
+                            secsLabel(k === "battery" ? batteryProfile().suspend : chargingProfile().suspend)
                         )} />
                 </box>
                 <box class="preset-row" spacing={4} homogeneous>
@@ -306,12 +438,11 @@ function IdleTimeoutsPanel() {
                         <button class="preset-btn"
                             $={(self) => {
                                 suspendBtns.set(p.secs, self)
-                                if (suspendSecs() === p.secs) self.add_css_class("active")
+                                if (activeProfile().suspend === p.secs) self.add_css_class("active")
                             }}
                             onClicked={() => {
-                                setSuspendSecs(p.secs)
-                                refreshSuspendBtns(p.secs)
-                                applyIdleTimeouts(screenOffSecs(), p.secs)
+                                refreshBtns(suspendBtns, p.secs)
+                                updateField("suspend", p.secs)
                             }}>
                             <label label={p.label} />
                         </button>
