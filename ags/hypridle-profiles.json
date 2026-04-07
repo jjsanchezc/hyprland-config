@@ -1,0 +1,12 @@
+{
+  "battery": {
+    "lock": 0,
+    "screenOff": 0,
+    "suspend": 0
+  },
+  "charging": {
+    "lock": 0,
+    "screenOff": 0,
+    "suspend": 0
+  }
+}
